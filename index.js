@@ -3,7 +3,6 @@ const { Client, Collection, Events, GatewayIntentBits, MessageFlags, REST, Route
 const fs = require('fs');
 const path = require('path');
 const colors = require('colors');
-const { type } = require("os");
 // import { fileURLToPath } from 'url' | Only required if using ES modules
 
 const guildPrefixes = {}; // Object to store guild-specific prefixes
