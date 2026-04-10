@@ -6,8 +6,6 @@ on:
 
 jobs:
   check-zenhub-pipeline:
-
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/check')
     runs-on: ubuntu-latest
     steps:
       - name: Check Zenhub Connected Issue Status
