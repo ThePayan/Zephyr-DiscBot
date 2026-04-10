@@ -15,43 +15,35 @@ jobs:
           GITHUB_REPO_ID: ${{ github.event.repository.id }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # 1. Construimos la consulta GraphQL
-          QUERY=$(cat <<EOF
-          {"query": "query { issueByInfo(repositoryGhId: $GITHUB_REPO_ID, issueNumber: $PR_NUMBER) { connectedIssues { nodes { number pipelineIssue { pipeline { name } } } } } }"}
-          EOF
-          )
+          echo "Consultando el estado de la PR #$PR_NUMBER en el tablero de Zenhub..."
           
-          # 2. Hacemos la petición a la API de Zenhub
-          RESPONSE=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $ZENHUB_TOKEN" \
-            -d "$QUERY" \
-            "https://api.zenhub.com/public/graphql")
+          # Hacemos la petición a la API REST pública (p1) de Zenhub
+          RESPONSE=$(curl -s -H "X-Authentication-Token: $ZENHUB_TOKEN" \
+            "https://api.zenhub.com/p1/repositories/$GITHUB_REPO_ID/issues/$PR_NUMBER")
           
-          # ¡NUEVO! Imprimimos la respuesta en crudo para saber qué dice Zenhub
           echo "Respuesta cruda de Zenhub: $RESPONSE"
           
-          # Validamos si la respuesta es un JSON válido antes de intentar parsearla
+          # Validamos si la respuesta es un JSON válido
           if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
-            echo "❌ Error: Zenhub no devolvió un JSON válido. Revisa que el Token sea correcto y tenga permisos."
+            echo "❌ Error: Zenhub no devolvió un JSON válido. Revisa el Token."
             exit 1
           fi
           
-          # 3. Extraemos el nombre de la columna
-          PIPELINE_NAME=$(echo "$RESPONSE" | jq -r '.data.issueByInfo.connectedIssues.nodes[0].pipelineIssue.pipeline.name')
+          # Extraemos el nombre de la columna (pipeline)
+          PIPELINE_NAME=$(echo "$RESPONSE" | jq -r '.pipeline.name')
           
-          # 4. Verificamos si existe conexión
+          # Si devuelve null, la PR no está trackeada en el tablero
           if [ "$PIPELINE_NAME" == "null" ] || [ -z "$PIPELINE_NAME" ]; then
-            echo "❌ Error: Esta PR no está conectada a ninguna Issue. Usa el botón 'Connect to Issue' de Zenhub."
+            echo "❌ Error: Esta PR no tiene una columna asignada en Zenhub. Conéctala a una Issue primero."
             exit 1
           fi
           
-          echo "La PR está conectada a una Issue en la columna: $PIPELINE_NAME"
+          echo "La tarjeta de esta PR en Zenhub está en la columna: $PIPELINE_NAME"
           
-          # 5. Verificamos si la columna es "Done"
+          # Verificamos si la columna es "Done" (o el nombre exacto que uses)
           if [ "$PIPELINE_NAME" != "Done" ]; then
-            echo "❌ Error: La PR no se puede mergear. La issue está en '$PIPELINE_NAME'. Muévela a 'Done'."
+            echo "❌ Error: La PR no se puede mergear. La tarjeta está en '$PIPELINE_NAME'. Muévela a 'Done' (o conecta la PR a una Issue que esté en 'Done')."
             exit 1
           fi
           
-          echo "✅ Validación exitosa."
+          echo "✅ Validación exitosa. La tarjeta está en 'Done'."
