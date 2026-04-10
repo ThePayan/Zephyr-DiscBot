@@ -15,9 +15,7 @@ jobs:
           GITHUB_REPO_ID: ${{ github.event.repository.id }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # 1. Construimos la consulta GraphQL para Zenhub.
-          # Buscamos la PR por su número y le pedimos a Zenhub que nos devuelva 
-          # las Issues que tiene conectadas y el nombre de su columna (pipeline).
+          # 1. Construimos la consulta GraphQL
           QUERY=$(cat <<EOF
           {"query": "query { issueByInfo(repositoryGhId: $GITHUB_REPO_ID, issueNumber: $PR_NUMBER) { connectedIssues { nodes { number pipelineIssue { pipeline { name } } } } } }"}
           EOF
@@ -30,21 +28,30 @@ jobs:
             -d "$QUERY" \
             "https://api.zenhub.com/public/graphql")
           
-          # 3. Extraemos el nombre de la columna usando jq
+          # ¡NUEVO! Imprimimos la respuesta en crudo para saber qué dice Zenhub
+          echo "Respuesta cruda de Zenhub: $RESPONSE"
+          
+          # Validamos si la respuesta es un JSON válido antes de intentar parsearla
+          if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+            echo "❌ Error: Zenhub no devolvió un JSON válido. Revisa que el Token sea correcto y tenga permisos."
+            exit 1
+          fi
+          
+          # 3. Extraemos el nombre de la columna
           PIPELINE_NAME=$(echo "$RESPONSE" | jq -r '.data.issueByInfo.connectedIssues.nodes[0].pipelineIssue.pipeline.name')
           
           # 4. Verificamos si existe conexión
           if [ "$PIPELINE_NAME" == "null" ] || [ -z "$PIPELINE_NAME" ]; then
-            echo "❌ Error: Esta PR no está conectada a ninguna Issue. Usa el botón 'Connect to Issue' de Zenhub en la interfaz para enlazarla."
+            echo "❌ Error: Esta PR no está conectada a ninguna Issue. Usa el botón 'Connect to Issue' de Zenhub."
             exit 1
           fi
           
-          echo "La PR está conectada a una Issue que está en la columna: $PIPELINE_NAME"
+          echo "La PR está conectada a una Issue en la columna: $PIPELINE_NAME"
           
           # 5. Verificamos si la columna es "Done"
           if [ "$PIPELINE_NAME" != "Done" ]; then
-            echo "❌ Error: La PR no se puede mergear. La issue conectada en Zenhub está en '$PIPELINE_NAME'. Muévela a 'Done' primero."
+            echo "❌ Error: La PR no se puede mergear. La issue está en '$PIPELINE_NAME'. Muévela a 'Done'."
             exit 1
           fi
           
-          echo "✅ Validación exitosa. La issue está en 'Done'."
+          echo "✅ Validación exitosa."
