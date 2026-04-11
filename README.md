@@ -1,5 +1,5 @@
 # Zephyr - Advanced Discord Voice AI Bot
-
+ 
 Zephyr es un bot de Discord de última generación que combina la funcionalidad clásica de moderación y utilidades con una potente integración de Inteligencia Artificial para interacciones de voz en tiempo real.
 
 ## 🚀 Características Principales
