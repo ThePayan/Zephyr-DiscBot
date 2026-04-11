@@ -1,49 +1,52 @@
-name: "Enforce Zenhub 'Done' Status via UI Connection"
+name: "Zenhub Status Check"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # Solo escuchamos cuando alguien escribe un comentario
+  issue_comment:
+    types: [created]
 
 jobs:
   check-zenhub-pipeline:
+    name: "Validación de Zenhub"
+    # IMPORTANTE: Solo se ejecuta si es una Pull Request Y el comentario empieza por /check
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/check') }}
+    
     runs-on: ubuntu-latest
     steps:
-      - name: Check Zenhub Connected Issue Status
+      - name: Consultar API de Zenhub
         env:
           ZENHUB_TOKEN: ${{ secrets.ZENHUB_TOKEN }}
-          # GitHub provee automáticamente estos datos en las Actions
           GITHUB_REPO_ID: ${{ github.event.repository.id }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.issue.number }}
         run: |
-          echo "Consultando el estado de la PR #$PR_NUMBER en el tablero de Zenhub..."
+          echo "Comando /check detectado por el usuario ${{ github.actor }}."
+          echo "Consultando el estado de la PR #$PR_NUMBER en Zenhub..."
           
-          # Hacemos la petición a la API REST pública (p1) de Zenhub
+          # Llamada a la API REST de Zenhub
           RESPONSE=$(curl -s -H "X-Authentication-Token: $ZENHUB_TOKEN" \
             "https://api.zenhub.com/p1/repositories/$GITHUB_REPO_ID/issues/$PR_NUMBER")
           
-          echo "Respuesta cruda de Zenhub: $RESPONSE"
-          
           # Validamos si la respuesta es un JSON válido
           if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
-            echo "❌ Error: Zenhub no devolvió un JSON válido. Revisa el Token."
+            echo "❌ Error: Zenhub devolvió un error. Revisa que el ZENHUB_TOKEN esté bien configurado en los Secrets."
             exit 1
           fi
           
-          # Extraemos el nombre de la columna (pipeline)
+          # Extraemos el nombre de la columna
           PIPELINE_NAME=$(echo "$RESPONSE" | jq -r '.pipeline.name')
           
-          # Si devuelve null, la PR no está trackeada en el tablero
+          # Si devuelve null, la tarjeta no está en el tablero
           if [ "$PIPELINE_NAME" == "null" ] || [ -z "$PIPELINE_NAME" ]; then
-            echo "❌ Error: Esta PR no tiene una columna asignada en Zenhub. Conéctala a una Issue primero."
+            echo "❌ Error: Esta PR no tiene una columna asignada en Zenhub. Conéctala a una Issue usando la interfaz de Zenhub primero."
             exit 1
           fi
           
-          echo "La tarjeta de esta PR en Zenhub está en la columna: $PIPELINE_NAME"
+          echo "La tarjeta en Zenhub está en la columna: $PIPELINE_NAME"
           
-          # Verificamos si la columna es "Done" (o el nombre exacto que uses)
+          # Verificamos si es "Done"
           if [ "$PIPELINE_NAME" != "Done" ]; then
-            echo "❌ Error: La PR no se puede mergear. La tarjeta está en '$PIPELINE_NAME'. Muévela a 'Done' (o conecta la PR a una Issue que esté en 'Done')."
+            echo "❌ Merge Bloqueado: La tarjeta está en '$PIPELINE_NAME'. Muévela a 'Done' y vuelve a escribir /check."
             exit 1
           fi
           
-          echo "✅ Validación exitosa. La tarjeta está en 'Done'."
+          echo "✅ ¡Todo listo! La tarjeta está en 'Done'. Merge permitido."
