@@ -1,0 +1,71 @@
+name: "Zenhub Status Check"
+
+on:
+  # 1. Se ejecuta automáticamente al abrir o actualizar código
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # 2. Se ejecuta cuando alguien deja un comentario
+  issue_comment:
+    types: [created]
+
+jobs:
+  verify-zenhub:
+    # Filtro: Solo corre si es un evento de PR, o si es un comentario en una PR que empieza por /check
+    if: >
+      github.event_name == 'pull_request' || 
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/check'))
+    
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write      # Necesario para poner el botón verde/rojo
+      pull-requests: read  # Necesario para leer los datos de la PR
+      
+    steps:
+      - name: Validar estado en Zenhub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Viene por defecto, no hay que crearlo
+          ZENHUB_TOKEN: ${{ secrets.ZENHUB_TOKEN }} # Tu token de Zenhub
+          REPO: ${{ github.repository }}
+          REPO_ID: ${{ github.event.repository.id }}
+        run: |
+          # 1. Identificar el número de la PR dependiendo de cómo se disparó el Action
+          if [ "${{ github.event_name }}" == "issue_comment" ]; then
+            PR_NUMBER="${{ github.event.issue.number }}"
+            echo "Comando /check detectado en la PR #$PR_NUMBER"
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            echo "Actualización de código detectada en la PR #$PR_NUMBER"
+          fi
+
+          # 2. Obtener el último commit de la PR (necesario para pegarle el Check visual)
+          PR_DATA=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER")
+          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.head.sha')
+
+          # 3. Consultar Zenhub
+          RESPONSE=$(curl -s -H "X-Authentication-Token: $ZENHUB_TOKEN" \
+            "https://api.zenhub.com/p1/repositories/$REPO_ID/issues/$PR_NUMBER")
+          
+          PIPELINE=$(echo "$RESPONSE" | jq -r '.pipeline.name')
+          
+          # Si Zenhub devuelve null, la tarjeta no está en el tablero
+          if [ "$PIPELINE" == "null" ] || [ -z "$PIPELINE" ]; then
+            PIPELINE="Sin conectar a Zenhub"
+          fi
+
+          # 4. Lógica de validación
+          STATE="failure" # 'failure' bloquea el merge (se ve amarillo/rojo)
+          DESC="Zenhub: $PIPELINE"
+
+          if [ "$PIPELINE" == "Done" ]; then
+            STATE="success" # 'success' desbloquea el merge (se ve verde)
+            DESC="¡Lista para mergear! (Done)"
+          fi
+
+          echo "Estado actual: $PIPELINE -> Enviando estado '$STATE' a GitHub."
+
+          # 5. Enviar el resultado al botón de Merge de GitHub
+          curl -s -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/statuses/$HEAD_SHA" \
+            -d "{\"state\":\"$STATE\",\"description\":\"$DESC\",\"context\":\"Zenhub Check\"}"
