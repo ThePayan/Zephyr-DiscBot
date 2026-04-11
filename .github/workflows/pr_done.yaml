@@ -53,7 +53,7 @@ jobs:
           fi
 
           # 4. Lógica de validación
-          STATE="pending" # 'pending' bloquea el merge (se ve amarillo/rojo)
+          STATE="failure" # 'failure' bloquea el merge (se ve amarillo/rojo)
           DESC="Zenhub: $PIPELINE"
 
           if [ "$PIPELINE" == "Done" ]; then
