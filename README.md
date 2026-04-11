@@ -73,4 +73,4 @@ Este proyecto sigue una arquitectura modular y limpia en `src/`:
 *   **`commands/`**: Comandos Slash modulares.
 
 ---
- Desarrollado con ❤️ usando Discord.js y OpenAI.
+ Desarrollado con ❤️ usando y OpenAI.
