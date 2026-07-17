@@ -5,13 +5,13 @@ const { miniEmbed, queueEmbed, COLORS } = require('../../src/handlers/musicHandl
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('queue')
-        .setDescription('Muestra la cola de reproducción.'),
+        .setDescription('Shows the playback queue.'),
     async execute(interaction) {
         const queue = useQueue(interaction.guildId);
 
         if (!queue || !queue.currentTrack) {
             return interaction.reply({
-                embeds: [miniEmbed('🔇 No hay música sonando ahora mismo.', COLORS.error)],
+                embeds: [miniEmbed('🔇 There is no music playing right now.', COLORS.error)],
                 flags: MessageFlags.Ephemeral
             });
         }

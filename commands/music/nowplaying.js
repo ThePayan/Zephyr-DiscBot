@@ -5,13 +5,13 @@ const { miniEmbed, COLORS } = require('../../src/handlers/musicHandler');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('nowplaying')
-        .setDescription('Muestra la canción que está sonando y su progreso.'),
+        .setDescription('Shows the current song and its progress.'),
     async execute(interaction) {
         const queue = useQueue(interaction.guildId);
 
         if (!queue || !queue.currentTrack) {
             return interaction.reply({
-                embeds: [miniEmbed('🔇 No hay música sonando ahora mismo.', COLORS.error)],
+                embeds: [miniEmbed('🔇 There is no music playing right now.', COLORS.error)],
                 flags: MessageFlags.Ephemeral
             });
         }
@@ -21,15 +21,15 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor(COLORS.playing)
-            .setAuthor({ name: queue.node.isPaused() ? '⏸️ En pausa' : '🎶 Sonando ahora' })
+            .setAuthor({ name: queue.node.isPaused() ? '⏸️ Paused' : '🎶 Now playing' })
             .setTitle(track.title)
             .setURL(track.url)
             .setThumbnail(track.thumbnail)
             .setDescription(progressBar)
             .addFields(
-                { name: '🎤 Artista', value: track.author || 'Desconocido', inline: true },
-                { name: '🙋 Pedida por', value: `${track.requestedBy ?? '—'}`, inline: true },
-                { name: '🔊 Volumen', value: `${queue.node.volume}%`, inline: true }
+                { name: '🎤 Artist', value: track.author || 'Unknown', inline: true },
+                { name: '🙋 Requested by', value: `${track.requestedBy ?? '—'}`, inline: true },
+                { name: '🔊 Volume', value: `${queue.node.volume}%`, inline: true }
             );
 
         return interaction.reply({ embeds: [embed] });

@@ -2,6 +2,7 @@
   "dependencies": {
     "@discordjs/voice": "^0.18.0",
     "@snazzah/davey": "^0.1.12",
+    "better-sqlite3": "^12.11.1",
     "colors": "^1.4.0",
     "discord-player": "^7.2.0",
     "discord-player-youtubei": "^2.0.0",

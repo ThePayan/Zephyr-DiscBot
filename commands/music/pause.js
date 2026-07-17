@@ -5,20 +5,20 @@ const { miniEmbed, controlsRow, COLORS } = require('../../src/handlers/musicHand
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('pause')
-        .setDescription('Pausa la canción actual.'),
+        .setDescription('Pauses the current song.'),
     async execute(interaction) {
         const queue = useQueue(interaction.guildId);
 
         if (!queue || !queue.isPlaying()) {
             return interaction.reply({
-                embeds: [miniEmbed('🔇 No hay música sonando ahora mismo.', COLORS.error)],
+                embeds: [miniEmbed('🔇 There is no music playing right now.', COLORS.error)],
                 flags: MessageFlags.Ephemeral
             });
         }
 
         if (queue.node.isPaused()) {
             return interaction.reply({
-                embeds: [miniEmbed('⏸️ La música ya está pausada. Usa `/resume` para reanudarla.')],
+                embeds: [miniEmbed('⏸️ The music is already paused. Use `/resume` to resume it.')],
                 flags: MessageFlags.Ephemeral
             });
         }
@@ -27,7 +27,7 @@ module.exports = {
         queue.metadata?.nowPlaying?.edit({ components: [controlsRow(true)] }).catch(() => {});
 
         return interaction.reply({
-            embeds: [miniEmbed(`⏸️ ${interaction.user} ha pausado la música.`)]
+            embeds: [miniEmbed(`⏸️ ${interaction.user} paused the music.`)]
         });
     }
 };

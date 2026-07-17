@@ -5,13 +5,13 @@ const { miniEmbed, COLORS } = require('../../src/handlers/musicHandler');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('skip')
-        .setDescription('Salta a la siguiente canción de la cola.'),
+        .setDescription('Skips to the next song in the queue.'),
     async execute(interaction) {
         const queue = useQueue(interaction.guildId);
 
         if (!queue || !queue.isPlaying()) {
             return interaction.reply({
-                embeds: [miniEmbed('🔇 No hay música sonando ahora mismo.', COLORS.error)],
+                embeds: [miniEmbed('🔇 There is no music playing right now.', COLORS.error)],
                 flags: MessageFlags.Ephemeral
             });
         }
@@ -20,7 +20,7 @@ module.exports = {
         queue.node.skip();
 
         return interaction.reply({
-            embeds: [miniEmbed(`⏭️ ${interaction.user} ha saltado **${skipped.title}**.`)]
+            embeds: [miniEmbed(`⏭️ ${interaction.user} skipped **${skipped.title}**.`)]
         });
     }
 };

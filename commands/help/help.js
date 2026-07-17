@@ -13,17 +13,9 @@ module.exports = {
             .setDescription('Here are all the available commands you can use:')
             .setThumbnail(interaction.client.user.displayAvatarURL());
 
-        const commandList = [];
-        
-        // Iterate through all loaded commands
-        commands.forEach(cmd => {
-            const name = `/${cmd.data.name}`;
-            const desc = cmd.data.description;
-            commandList.push({ name: name, value: desc, inline: false });
-        });
-
-        // Add fields to embed (max 25 fields strictly, we have ~7 so it's fine)
-        embed.addFields(commandList);
+        // One line per command (embed fields are capped at 25, a description is not)
+        const lines = commands.map(cmd => `**/${cmd.data.name}** — ${cmd.data.description}`);
+        embed.setDescription(`Here are all the available commands you can use:\n\n${lines.join('\n')}`);
 
         // Add a footer tip
         embed.setFooter({ text: 'Zephyr Voice AI • Built with Discord.js & OpenAI' });

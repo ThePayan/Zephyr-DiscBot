@@ -28,17 +28,17 @@ function controlsRow(paused = false) {
         new ButtonBuilder()
             .setCustomId('music_toggle')
             .setEmoji(paused ? '▶️' : '⏸️')
-            .setLabel(paused ? 'Reanudar' : 'Pausa')
+            .setLabel(paused ? 'Resume' : 'Pause')
             .setStyle(paused ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId('music_skip')
             .setEmoji('⏭️')
-            .setLabel('Saltar')
+            .setLabel('Skip')
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId('music_stop')
             .setEmoji('⏹️')
-            .setLabel('Parar')
+            .setLabel('Stop')
             .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
             .setCustomId('music_shuffle')
@@ -47,7 +47,7 @@ function controlsRow(paused = false) {
         new ButtonBuilder()
             .setCustomId('music_queue')
             .setEmoji('📜')
-            .setLabel('Cola')
+            .setLabel('Queue')
             .setStyle(ButtonStyle.Secondary)
     );
 }
@@ -59,19 +59,19 @@ function miniEmbed(text, color = COLORS.info) {
 function nowPlayingEmbed(queue, track) {
     return new EmbedBuilder()
         .setColor(COLORS.playing)
-        .setAuthor({ name: '🎶 Reproduciendo ahora' })
+        .setAuthor({ name: '🎶 Now playing' })
         .setTitle(track.title)
         .setURL(track.url)
         .setThumbnail(track.thumbnail)
         .addFields(
-            { name: '🎤 Artista', value: track.author || 'Desconocido', inline: true },
-            { name: '⏱️ Duración', value: track.duration || '—', inline: true },
-            { name: '🙋 Pedida por', value: `${track.requestedBy ?? '—'}`, inline: true }
+            { name: '🎤 Artist', value: track.author || 'Unknown', inline: true },
+            { name: '⏱️ Duration', value: track.duration || '—', inline: true },
+            { name: '🙋 Requested by', value: `${track.requestedBy ?? '—'}`, inline: true }
         )
         .setFooter({
             text: queue.tracks.size > 0
-                ? `${queue.tracks.size} canción(es) esperando en la cola`
-                : 'No hay más canciones en la cola'
+                ? `${queue.tracks.size} song(s) waiting in the queue`
+                : 'No more songs in the queue'
         })
         .setTimestamp();
 }
@@ -92,29 +92,29 @@ function queueEmbed(queue) {
 
     const embed = new EmbedBuilder()
         .setColor(COLORS.added)
-        .setAuthor({ name: '📜 Cola de reproducción' });
+        .setAuthor({ name: '📜 Queue' });
 
     if (current) {
         embed.setThumbnail(current.thumbnail);
         embed.addFields({
-            name: '▶️ Sonando ahora',
+            name: '▶️ Now playing',
             value: `[${current.title}](${current.url}) · \`${current.duration}\` · ${current.requestedBy ?? ''}`
         });
     }
 
     if (tracks.length === 0) {
-        embed.setDescription('La cola está vacía. Usa `/play` para añadir canciones.');
+        embed.setDescription('The queue is empty. Use `/play` to add songs.');
     } else {
         const lines = tracks
             .slice(0, 10)
             .map((t, i) => `**${i + 1}.** [${t.title}](${t.url}) · \`${t.duration}\``);
         if (tracks.length > 10) {
-            lines.push(`*…y ${tracks.length - 10} más*`);
+            lines.push(`*…and ${tracks.length - 10} more*`);
         }
-        embed.addFields({ name: '⏭️ A continuación', value: lines.join('\n') });
+        embed.addFields({ name: '⏭️ Up next', value: lines.join('\n') });
 
         const totalMS = tracks.reduce((acc, t) => acc + (t.durationMS || 0), 0);
-        embed.setFooter({ text: `${tracks.length} canción(es) · duración total ${formatMS(totalMS)}` });
+        embed.setFooter({ text: `${tracks.length} song(s) · total duration ${formatMS(totalMS)}` });
     }
 
     return embed;
@@ -139,8 +139,8 @@ function init(client) {
     // Stream via yt-dlp: YouTube blocks the default innertube clients,
     // which makes tracks "play" without producing any audio.
     player.extractors.register(YoutubeiExtractor, { useYoutubeDL: true })
-        .then(() => logger.info('Music: extractor de YouTube registrado.'))
-        .catch(err => logger.error('Music: error registrando el extractor de YouTube:', err));
+        .then(() => logger.info('Music: YouTube extractor registered.'))
+        .catch(err => logger.error('Music: failed to register the YouTube extractor:', err));
 
     player.events.on('playerStart', async (queue, track) => {
         const meta = queue.metadata;
@@ -155,14 +155,14 @@ function init(client) {
                 components: [controlsRow(false)]
             });
         } catch (err) {
-            logger.error('Music: no se pudo enviar el mensaje de "Reproduciendo ahora":', err);
+            logger.error('Music: could not send the "Now playing" message:', err);
         }
     });
 
     player.events.on('emptyQueue', async (queue) => {
         await clearControls(queue);
         queue.metadata?.channel?.send({
-            embeds: [miniEmbed('✅ Se acabó la cola. ¡Añade más canciones con `/play`!')]
+            embeds: [miniEmbed('✅ Queue finished. Add more songs with `/play`!')]
         }).catch(() => {});
     });
 
@@ -171,14 +171,14 @@ function init(client) {
     });
 
     player.events.on('playerError', (queue, error) => {
-        logger.error('Music: error reproduciendo la pista:', error);
+        logger.error('Music: error playing the track:', error);
         queue.metadata?.channel?.send({
-            embeds: [miniEmbed('⚠️ Hubo un error reproduciendo esa canción, la salto.', COLORS.error)]
+            embeds: [miniEmbed('⚠️ There was an error playing that song, skipping it.', COLORS.error)]
         }).catch(() => {});
     });
 
     player.events.on('error', (queue, error) => {
-        logger.error('Music: error en la cola:', error);
+        logger.error('Music: queue error:', error);
     });
 
     return player;
@@ -191,7 +191,7 @@ async function handleButton(interaction) {
 
     if (!queue || !queue.currentTrack) {
         return interaction.reply({
-            embeds: [miniEmbed('🔇 No hay música sonando ahora mismo.', COLORS.error)],
+            embeds: [miniEmbed('🔇 There is no music playing right now.', COLORS.error)],
             flags: MessageFlags.Ephemeral
         });
     }
@@ -200,7 +200,7 @@ async function handleButton(interaction) {
     const memberChannelId = interaction.member?.voice?.channelId;
     if (interaction.customId !== 'music_queue' && queue.channel && memberChannelId !== queue.channel.id) {
         return interaction.reply({
-            embeds: [miniEmbed('🎧 Tienes que estar en mi canal de voz para usar los controles.', COLORS.error)],
+            embeds: [miniEmbed('🎧 You need to be in my voice channel to use the controls.', COLORS.error)],
             flags: MessageFlags.Ephemeral
         });
     }
@@ -215,20 +215,20 @@ async function handleButton(interaction) {
             const skipped = queue.currentTrack;
             queue.node.skip();
             return interaction.reply({
-                embeds: [miniEmbed(`⏭️ ${interaction.user} ha saltado **${skipped.title}**.`)]
+                embeds: [miniEmbed(`⏭️ ${interaction.user} skipped **${skipped.title}**.`)]
             });
         }
         case 'music_stop': {
             queue.delete();
             await interaction.update({ components: [] }).catch(() => {});
             return interaction.followUp({
-                embeds: [miniEmbed(`⏹️ ${interaction.user} ha parado la música y vaciado la cola.`)]
+                embeds: [miniEmbed(`⏹️ ${interaction.user} stopped the music and cleared the queue.`)]
             });
         }
         case 'music_shuffle': {
             queue.tracks.shuffle();
             return interaction.reply({
-                embeds: [miniEmbed(`🔀 ${interaction.user} ha mezclado la cola (${queue.tracks.size} canciones).`)]
+                embeds: [miniEmbed(`🔀 ${interaction.user} shuffled the queue (${queue.tracks.size} songs).`)]
             });
         }
         case 'music_queue': {

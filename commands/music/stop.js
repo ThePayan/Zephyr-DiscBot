@@ -5,13 +5,13 @@ const { miniEmbed, COLORS } = require('../../src/handlers/musicHandler');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stop')
-        .setDescription('Para la música, vacía la cola y desconecta el bot.'),
+        .setDescription('Stops the music, clears the queue and disconnects the bot.'),
     async execute(interaction) {
         const queue = useQueue(interaction.guildId);
 
         if (!queue) {
             return interaction.reply({
-                embeds: [miniEmbed('🔇 No hay música sonando ahora mismo.', COLORS.error)],
+                embeds: [miniEmbed('🔇 There is no music playing right now.', COLORS.error)],
                 flags: MessageFlags.Ephemeral
             });
         }
@@ -24,7 +24,7 @@ module.exports = {
         queue.delete();
 
         return interaction.reply({
-            embeds: [miniEmbed(`⏹️ ${interaction.user} ha parado la música y vaciado la cola.`)]
+            embeds: [miniEmbed(`⏹️ ${interaction.user} stopped the music and cleared the queue.`)]
         });
     }
 };
