@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config/config');
 const VoiceHandler = require('./handlers/voiceHandler');
+const musicHandler = require('./handlers/musicHandler');
 const logger = require('./utils/logger'); // This now has colors enabled
 
 // --- LEGACY PREFIX LOGIC ---
@@ -27,6 +28,7 @@ const client = new Client({
 
 client.commands = new Collection();
 client.voiceHandler = new VoiceHandler(client);
+musicHandler.init(client);
 
 // --- LOAD COMMANDS (Legacy Structure) ---
 const commands = [];
@@ -82,11 +84,21 @@ const rest = new REST({ version: '10' }).setToken(config.discord.token);
 
 // --- EVENTS ---
 
-client.once('ready', () => {
+client.once(Events.ClientReady, () => {
     logger.loggedIn(client.user.tag);
 });
 
 client.on(Events.InteractionCreate, async interaction => {
+    // Music control buttons (pause/skip/stop/shuffle/queue)
+    if (interaction.isButton() && interaction.customId.startsWith('music_')) {
+        try {
+            await musicHandler.handleButton(interaction);
+        } catch (error) {
+            logger.error('Error handling music button:', error);
+        }
+        return;
+    }
+
 	if (!interaction.isChatInputCommand()) return;
 
     // Standard command handling
